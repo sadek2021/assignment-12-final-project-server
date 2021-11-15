@@ -19,9 +19,9 @@ async function run() {
         await client.connect();
         const database = client.db('timekeeper');
         const productCollection = database.collection('products');
-        const destinationCollection = database.collection('destinations');
+        const reviewCollection = database.collection('reviews');
         const orderCollection = database.collection('orders');
-        // const userCollection = database.collection('users')
+        const userCollection = database.collection('users')
 
         // Get product API
         app.get('/products', async (req, res) => {
@@ -30,45 +30,70 @@ async function run() {
             res.send(products);
         })
 
-        // Get user API
-        // app.get('/users', async (req, res) => {
-        //     const cursor = userCollection.find({})
-        //     const users = await cursor.toArray();
-        //     res.send(users);
-        // })
 
-        // Post API
+        // Post Product API
         app.post('/products', async (req, res) => {
             const product = req.body;
-            console.log('hit the post api', product)
-
             const result = await productCollection.insertOne(product);
-            console.log(result);
             res.json(result)
-
         })
 
+        // Post User API
+        app.post('/users', async (req, res) => {
+            const user = req.body;
+            const result = await userCollection.insertOne(user);
+            res.json(result);
+        })
+
+        // Put User API
+        app.put('/users', async (req, res) => {
+            const user = req.body;
+            const filter = { email: user.email };
+            const options = { upsert: true };
+            const updateDoc = { $set: user };
+            const result = await userCollection.updateOne(filter, updateDoc, options)
+            res.json(result);
+        })
+
+        // Update User API
+        app.put('/users/admin', async (req, res) => {
+            const user = req.body;
+            const filter = { email: user.email };
+            const updateDoc = { $set: { role: 'admin' } };
+            const result = await userCollection.updateOne(filter, updateDoc);
+            res.json(result);
+        })
+
+
         // Post order API
-        app.post('/orders', async (req, res)=>{
+        app.post('/orders', async (req, res) => {
             const order = req.body;
             const result = await orderCollection.insertOne(order);
             res.json(result);
         })
 
         // Delete orders API
-        app.delete('/orders/:id', async(req, res)=>{
+        app.delete('/orders/:id', async (req, res) => {
             const id = req.params.id;
-            const query = {_id: ObjectId(id)};
+            const query = { _id: ObjectId(id) };
             const result = await orderCollection.deleteOne(query);
             res.json(result);
         })
 
-        // Status Update API
-        app.put('/orders/:id', async(req, res)=>{
+        // Delete Product Api
+        app.delete('/products/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await productCollection.deleteOne(query);
+            res.json(result);
+        })
+
+        // Status Update Order API
+        app.put('/orders/:id', async (req, res) => {
             const id = req.params.id;
             const updatedStatus = req.body;
-            const filter = {_id: ObjectId(id)};
-            const options = {upsert: true};
+            const filter = { _id: ObjectId(id) };
+            const options = { upsert: true };
             const updateDoc = {
                 $set: {
                     status: updatedStatus.status
@@ -87,17 +112,36 @@ async function run() {
         })
 
         // Get order API
-        app.get('/orders', async(req, res) =>{
+        app.get('/orders', async (req, res) => {
             const cursor = orderCollection.find({});
             const orders = await cursor.toArray();
             res.send(orders)
         })
 
-        // Get Destination API
-        app.get('/destinations', async(req, res)=>{
-            const cursor = destinationCollection.find({});
-            const destinations = await cursor.toArray();
-            res.json(destinations)
+        // Get Admin User API
+        app.get('/users/:email', async (req, res) => {
+            const email = req.params.email;
+            const filter = { email: email };
+            const user = await userCollection.findOne(filter);
+            let isAdmin = false;
+            if (user?.role === 'admin') {
+                isAdmin = true;
+            }
+            res.json({ admin: isAdmin });
+        });
+
+        // Get review API
+        app.get('/reviews', async (req, res) => {
+            const cursor = reviewCollection.find({});
+            const reviews = await cursor.toArray();
+            res.json(reviews)
+        })
+
+        // Post Review API
+        app.post('/reviews', async (req, res) => {
+            const review = req.body;
+            const result = await reviewCollection.insertOne(review);
+            res.json(result);
         })
 
     }
@@ -113,5 +157,5 @@ app.get('/', (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log('Server running at port', port)
+    console.log(`Server running at port: ${port}`)
 })
